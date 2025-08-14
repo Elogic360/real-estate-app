@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, DollarSign, Square } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { apiService } from '../../services/api';
 import { Region, District, Council } from '../../types';
 
 interface SearchFiltersProps {
@@ -56,13 +56,8 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({ onFiltersChange })
 
   const fetchRegions = async () => {
     try {
-      const { data, error } = await supabase
-        .from('regions')
-        .select('*')
-        .order('name');
-      
-      if (error) throw error;
-      setRegions(data || []);
+      const data = await apiService.getRegions();
+      setRegions(data);
     } catch (error) {
       console.error('Error fetching regions:', error);
     }
@@ -70,14 +65,8 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({ onFiltersChange })
 
   const fetchDistricts = async (regionId: number) => {
     try {
-      const { data, error } = await supabase
-        .from('districts')
-        .select('*')
-        .eq('region_id', regionId)
-        .order('name');
-      
-      if (error) throw error;
-      setDistricts(data || []);
+      const data = await apiService.getDistricts(regionId);
+      setDistricts(data);
     } catch (error) {
       console.error('Error fetching districts:', error);
     }
@@ -85,14 +74,8 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({ onFiltersChange })
 
   const fetchCouncils = async (districtId: number) => {
     try {
-      const { data, error } = await supabase
-        .from('councils')
-        .select('*')
-        .eq('district_id', districtId)
-        .order('name');
-      
-      if (error) throw error;
-      setCouncils(data || []);
+      const data = await apiService.getCouncils(districtId);
+      setCouncils(data);
     } catch (error) {
       console.error('Error fetching councils:', error);
     }

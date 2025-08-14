@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { apiService } from '../services/api';
 import { Order, Plot } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { ShoppingBag, MapPin, User, Phone, Mail } from 'lucide-react';
@@ -21,41 +21,8 @@ export const Dashboard: React.FC = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          plot:plots(
-            id,
-            title,
-            price,
-            area_sqm,
-            image_urls,
-            usage_type,
-            status,
-            council:councils(
-              id,
-              name,
-              district:districts(
-                id,
-                name,
-                region:regions(
-                  id,
-                  name
-                )
-              )
-            )
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching orders:', error);
-        return;
-      }
-
-      setOrders(data || []);
+      const data = await apiService.getOrders();
+      setOrders(data);
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {

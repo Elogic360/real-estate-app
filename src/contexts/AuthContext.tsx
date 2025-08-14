@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiService } from '../services/api';
 import { User, AuthContextType, RegisterData } from '../types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,62 +24,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Check if user is already logged in
     const checkUser = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', session.user.email)
-            .single();
-          
-          if (userData) {
-            setUser(userData);
-          }
+        const token = localStorage.getItem('access_token');
+        if (token) {
+          const userData = await apiService.getCurrentUser();
+          setUser(userData);
         }
       } catch (error) {
         console.error('Error checking user session:', error);
+        localStorage.removeItem('access_token');
       } finally {
         setLoading(false);
       }
     };
 
     checkUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', session.user.email)
-            .single();
-          
-          if (userData) {
-            setUser(userData);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error('Login error:', error);
-        return false;
-      }
+      await apiService.login(email, password);
+      const userData = await apiService.getCurrentUser();
+      setUser(userData);
 
       return true;
     } catch (error) {
@@ -93,33 +59,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: RegisterData): Promise<boolean> => {
     try {
       setLoading(true);
-      
-      // First register with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-      });
-
-      if (authError || !authData.user) {
-        console.error('Registration error:', authError);
-        return false;
-      }
-
-      // Then create user record in our users table
-      const { error: userError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        email: userData.email,
-        phone_number: userData.phone_number,
-        hashed_password: '', // This is handled by Supabase Auth
-        role: 'user',
-      });
-
-      if (userError) {
-        console.error('User creation error:', userError);
-        return false;
-      }
+      await apiService.register(userData);
 
       return true;
     } catch (error) {
@@ -132,7 +72,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      apiService.logout();
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);

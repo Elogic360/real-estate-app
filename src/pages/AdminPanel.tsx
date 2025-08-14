@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout/Layout';
+import { PlotUploadModal } from '../components/Admin/PlotUploadModal';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { apiService } from '../services/api';
 import { Plot, Order, User } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { Plus, Edit, Trash2, Eye, Users, MapPin, ShoppingBag } from 'lucide-react';
@@ -13,6 +14,7 @@ export const AdminPanel: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     if (user && (user.role === 'admin' || user.role === 'master_admin')) {
@@ -44,103 +46,51 @@ export const AdminPanel: React.FC = () => {
   };
 
   const fetchPlots = async () => {
-    const { data, error } = await supabase
-      .from('plots')
-      .select(`
-        *,
-        council:councils(
-          id,
-          name,
-          district:districts(
-            id,
-            name,
-            region:regions(
-              id,
-              name
-            )
-          )
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const data = await apiService.getPlots({ limit: 1000 });
+      setPlots(data);
+    } catch (error) {
       console.error('Error fetching plots:', error);
-      return;
     }
-
-    setPlots(data || []);
   };
 
   const fetchOrders = async () => {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        user:users(
-          id,
-          first_name,
-          last_name,
-          email
-        ),
-        plot:plots(
-          id,
-          title,
-          price,
-          area_sqm
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const data = await apiService.getOrders();
+      setOrders(data);
+    } catch (error) {
       console.error('Error fetching orders:', error);
-      return;
     }
-
-    setOrders(data || []);
   };
 
   const fetchUsers = async () => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      // This would need to be implemented in the API service
+      // For now, we'll leave it empty
+      console.log('User management not yet implemented');
+    } catch (error) {
       console.error('Error fetching users:', error);
-      return;
     }
-
-    setUsers(data || []);
   };
 
   const updateOrderStatus = async (orderId: string, status: string) => {
-    const { error } = await supabase
-      .from('orders')
-      .update({ order_status: status })
-      .eq('id', orderId);
-
-    if (error) {
+    try {
+      // This would need to be implemented in the API service
+      console.log('Order status update not yet implemented');
+    } catch (error) {
       console.error('Error updating order status:', error);
       alert('Failed to update order status');
-      return;
     }
-
-    fetchOrders();
   };
 
   const updateUserRole = async (userId: string, role: string) => {
-    const { error } = await supabase
-      .from('users')
-      .update({ role })
-      .eq('id', userId);
-
-    if (error) {
+    try {
+      // This would need to be implemented in the API service
+      console.log('User role update not yet implemented');
+    } catch (error) {
       console.error('Error updating user role:', error);
       alert('Failed to update user role');
-      return;
     }
-
-    fetchUsers();
   };
 
   if (!user || (user.role !== 'admin' && user.role !== 'master_admin')) {
@@ -152,6 +102,16 @@ export const AdminPanel: React.FC = () => {
             <p className="text-gray-600">You don't have permission to access this page.</p>
           </div>
         </div>
+
+        {/* Upload Modal */}
+        <PlotUploadModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          onSuccess={() => {
+            fetchData();
+            setShowUploadModal(false);
+          }}
+        />
       </Layout>
     );
   }
@@ -233,7 +193,10 @@ export const AdminPanel: React.FC = () => {
               <div className="p-6 border-b border-gray-200">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Plot Management</h2>
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center">
+                  <button 
+                    onClick={() => setShowUploadModal(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center"
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Plot
                   </button>

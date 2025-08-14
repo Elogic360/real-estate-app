@@ -4,7 +4,7 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Trash2, ShoppingCart } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
-import { supabase } from '../lib/supabase';
+import { apiService } from '../services/api';
 
 export const Cart: React.FC = () => {
   const { items, removeFromCart, clearCart, totalPrice } = useCart();
@@ -19,28 +19,8 @@ export const Cart: React.FC = () => {
 
     try {
       // Create orders for each plot in cart
-      const orders = items.map(item => ({
-        user_id: user.id,
-        plot_id: item.plot.id,
-        order_status: 'pending'
-      }));
-
-      const { error } = await supabase
-        .from('orders')
-        .insert(orders);
-
-      if (error) {
-        console.error('Error creating orders:', error);
-        alert('Failed to create orders. Please try again.');
-        return;
-      }
-
-      // Update plot statuses to pending_payment
       for (const item of items) {
-        await supabase
-          .from('plots')
-          .update({ status: 'pending_payment' })
-          .eq('id', item.plot.id);
+        await apiService.createOrder(item.plot.id);
       }
 
       clearCart();
